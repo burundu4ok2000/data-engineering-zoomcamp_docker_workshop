@@ -38,15 +38,15 @@ resource "docker_container" "postgres" {
 
   # Переменные окружения (те же, что были в docker-compose)
   env = [
-    "POSTGRES_USER=user",
-    "POSTGRES_PASSWORD=password",
+    "POSTGRES_USER=root",
+    "POSTGRES_PASSWORD=root",
     "POSTGRES_DB=ny_taxi"
   ]
 
   networks_advanced {
     name = docker_network.private_network.name
   }
-  
+
   # Persistent volume (чтобы данные не пропали)
   volumes {
     host_path      = "${abspath(path.module)}/ny_taxi_postgres_data"
