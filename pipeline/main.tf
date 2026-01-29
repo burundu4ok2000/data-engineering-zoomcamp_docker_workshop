@@ -8,8 +8,8 @@ terraform {
 }
 
 provider "google" {
-  project = "de-zoomcamp-2026-485615"
-  region  = "us-central1"
+  project = var.project_id
+  region  = var.region
 }
 
 # "hello-bucket" - уникальное имя внутри моего GCP
@@ -17,13 +17,13 @@ provider "google" {
 # Это нужно, чтобы другие люди могли обращаться к моему бакету по этому имени.
 
 resource "google_storage_bucket" "hello-bucket" {
-  name          = "de-zoomcamp-2026-485615-hello-bucket"
-  location      = "US"
+  name          = var.bucket_name
+  location      = var.bucket_location
   force_destroy = true
 
   lifecycle_rule {
     condition {
-      age = 7
+      age = var.delete_object_age
     }
     action {
       type = "Delete"
@@ -32,10 +32,15 @@ resource "google_storage_bucket" "hello-bucket" {
 
   lifecycle_rule {
     condition {
-      age = 1
+      age = var.abort_incomplete_multipart_upload_age
     }
     action {
       type = "AbortIncompleteMultipartUpload"
     }
   }
+}
+
+resource "google_bigquery_dataset" "hello-dataset" {
+  dataset_id                  = var.dataset_id
+  location                    = var.dataset_location
 }
