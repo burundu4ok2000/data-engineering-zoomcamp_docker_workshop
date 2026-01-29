@@ -1,75 +1,41 @@
 terraform {
   required_providers {
-    # В видео тут "hashicorp/google". У нас — Docker.
-    docker = {
-      source  = "kreuzwerker/docker"
-      version = "~> 3.0.1"
+    google = {
+      source  = "hashicorp/google"
+      version = "7.16.0"
     }
   }
 }
 
-provider "docker" {}
-
-# 1. Скачиваем образ (В видео это аналог настройки доступа)
-resource "docker_image" "postgres" {
-  name         = "postgres:13"
-  keep_locally = true
+provider "google" {
+  project = "de-zoomcamp-2026-485615"
+  region  = "us-central1"
 }
 
-resource "docker_image" "pgadmin" {
-  name         = "dpage/pgadmin4"
-  keep_locally = true
-}
+# "hello-bucket" - уникальное имя внутри моего GCP
+# "de-zoomcamp-2026-485615-hello-bucket" - уникальное имя в мире. 
+# Это нужно, чтобы другие люди могли обращаться к моему бакету по этому имени.
 
-# 2. Создаем сеть (В видео этого нет, но в Докере это важно)
-resource "docker_network" "private_network" {
-  name = "my_terraform_network"
-}
+resource "google_storage_bucket" "hello-bucket" {
+  name          = "de-zoomcamp-2026-485615-hello-bucket"
+  location      = "US"
+  force_destroy = true
 
-# 3. Поднимаем Базу (В видео это resource "google_bigquery_dataset")
-resource "docker_container" "postgres" {
-  image = docker_image.postgres.image_id
-  name  = "ny_taxi_postgres_tf" # Имя контейнера
-
-  ports {
-    internal = 5432
-    external = 5432
+  lifecycle_rule {
+    condition {
+      age = 7
+    }
+    action {
+      type = "Delete"
+    }
   }
 
-  # Переменные окружения (те же, что были в docker-compose)
-  env = [
-    "POSTGRES_USER=root",
-    "POSTGRES_PASSWORD=root",
-    "POSTGRES_DB=ny_taxi"
-  ]
-
-  networks_advanced {
-    name = docker_network.private_network.name
-  }
-
-  # Persistent volume (чтобы данные не пропали)
-  volumes {
-    host_path      = "${abspath(path.module)}/ny_taxi_postgres_data"
-    container_path = "/var/lib/postgresql/data"
-  }
-}
-
-# 4. Поднимаем pgAdmin (В видео этого нет, но нам удобно)
-resource "docker_container" "pgadmin" {
-  image = docker_image.pgadmin.image_id
-  name  = "pgadmin_tf"
-
-  ports {
-    internal = 80
-    external = 8080
-  }
-
-  env = [
-    "PGADMIN_DEFAULT_EMAIL=admin@admin.com",
-    "PGADMIN_DEFAULT_PASSWORD=root"
-  ]
-
-  networks_advanced {
-    name = docker_network.private_network.name
+  lifecycle_rule {
+    condition {
+      age = 1
+    }
+    action {
+      type = "AbortIncompleteMultipartUpload"
+    }
   }
 }
