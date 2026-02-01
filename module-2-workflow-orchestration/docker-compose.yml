@@ -73,8 +73,10 @@ services:
       # или Rootless Docker, чтобы дирижер случайно не снес всё здание.
       # Но для локальной учебы за роутером — это "золотой стандарт" скорости и удобства.
       - /tmp/kestra-wd:/tmp/kestra-wd # Description: Mount temporary working directory for Kestra tasks (Docker tasks, Python tasks, etc.)
+      - /home/donald_trump/.google/credentials/my-credentials.json:/app/gcp-auth.json:ro
     environment:
       # Description: Keatra brains. Configuration for database, storage, authentication, etc.
+      GOOGLE_APPLICATION_CREDENTIALS: /app/gcp-auth.json
       KESTRA_CONFIGURATION: |
         # Database configuration using PostgreSQL. Kestra will store its metadata here.
         datasources:

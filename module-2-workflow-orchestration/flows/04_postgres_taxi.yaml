@@ -1,8 +1,10 @@
+# Блок 1: Паспорт (Identity)
 id: 04_postgres_taxi
 namespace: zoomcamp
 description: |
   The CSV Data used in the course: https://github.com/DataTalksClub/nyc-tlc-data/releases
 
+# Блок 2: Опросник (Inputs)
 inputs:
   - id: taxi
     type: SELECT
@@ -22,12 +24,14 @@ inputs:
     values: ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
     defaults: "01"
 
+# Блок 3: Вычислительный центр (Variables)
 variables:
   file: "{{inputs.taxi}}_tripdata_{{inputs.year}}-{{inputs.month}}.csv"
   staging_table: "public.{{inputs.taxi}}_tripdata_staging"
   table: "public.{{inputs.taxi}}_tripdata"
   data: "{{outputs.extract.outputFiles[inputs.taxi ~ '_tripdata_' ~ inputs.year ~ '-' ~ inputs.month ~ '.csv']}}"
 
+# Блок 4: Подготовка и Добыча (Core Tasks: Start)
 tasks:
   - id: set_label
     type: io.kestra.plugin.core.execution.Labels
@@ -44,6 +48,7 @@ tasks:
     commands:
       - wget -qO- https://github.com/DataTalksClub/nyc-tlc-data/releases/download/{{inputs.taxi}}/{{render(vars.file)}}.gz | gunzip > {{render(vars.file)}}
 
+# Блок 5: Логический перекресток (Branching Logic)
   - id: if_yellow_taxi
     type: io.kestra.plugin.core.flow.If
     condition: "{{inputs.taxi == 'yellow'}}"
@@ -224,6 +229,11 @@ tasks:
 
       - id: green_add_unique_id_and_filename
         type: io.kestra.plugin.jdbc.postgresql.Queries
+        # COALESCE(..., '') — Защита от «пустоты» (NULL)
+        # Это самая важная козявка. В SQL есть коварное правило:
+        # Любой текст + NULL = NULL
+        # COALESCE говорит: «Возьми значение, но если там NULL — подставь вместо него пустую строку ''». 
+        # Это гарантирует, что склейка не порвется
         sql: |
           UPDATE {{render(vars.staging_table)}}
           SET 
@@ -258,10 +268,14 @@ tasks:
               S.improvement_surcharge, S.total_amount, S.payment_type, S.trip_type, S.congestion_surcharge
             );
   
+  # Блок 6: Клининг (Post-process Cleanup)
   - id: purge_files
     type: io.kestra.plugin.core.storage.PurgeCurrentExecutionFiles
     description: This will remove output files. If you'd like to explore Kestra outputs, disable it.
 
+# Блок 7: Настройки связи (Global Plugin Defaults)
+# Это архитектурный прием «для сеньоров», чтобы не повторяться (принцип DRY — Don't Repeat Yourself).
+# Своего рода "глобальные переменные" но более умные.
 pluginDefaults:
   - type: io.kestra.plugin.jdbc.postgresql
     values:
