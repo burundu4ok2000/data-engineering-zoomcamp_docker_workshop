@@ -10,9 +10,9 @@ services:
   pgdatabase:
     image: postgres:18
     environment:
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: root
-      POSTGRES_DB: ny_taxi
+      POSTGRES_USER: ${NY_TAXI_DB_USER}
+      POSTGRES_PASSWORD: ${NY_TAXI_DB_PASSWORD}
+      POSTGRES_DB: ${NY_TAXI_DB_NAME}
     ports:
       - "5432:5432"
     volumes:
@@ -24,8 +24,8 @@ services:
   pgadmin:
     image: dpage/pgadmin4
     environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
-      - PGADMIN_DEFAULT_PASSWORD=root
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_MAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASS}
     ports:
       - "8085:80"
     depends_on:
@@ -39,7 +39,7 @@ services:
     environment:
       POSTGRES_DB: kestra
       POSTGRES_USER: kestra
-      POSTGRES_PASSWORD: k3str4
+      POSTGRES_PASSWORD: ${KESTRA_DB_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
       interval: 30s
@@ -73,7 +73,7 @@ services:
       # или Rootless Docker, чтобы дирижер случайно не снес всё здание.
       # Но для локальной учебы за роутером — это "золотой стандарт" скорости и удобства.
       - /tmp/kestra-wd:/tmp/kestra-wd # Description: Mount temporary working directory for Kestra tasks (Docker tasks, Python tasks, etc.)
-      - /home/donald_trump/.google/credentials/my-credentials.json:/app/gcp-auth.json:ro
+      - ${GCP_KEY_PATH}:/app/gcp-auth.json:ro
     environment:
       # Description: Keatra brains. Configuration for database, storage, authentication, etc.
       GOOGLE_APPLICATION_CREDENTIALS: /app/gcp-auth.json
@@ -84,12 +84,12 @@ services:
             url: jdbc:postgresql://kestra_postgres:5432/kestra
             driverClassName: org.postgresql.Driver
             username: kestra
-            password: k3str4
+            password: "${KESTRA_DB_PASSWORD}"
         kestra:
           server:
             basicAuth:
-              username: "admin@kestra.io" # it must be a valid email address
-              password: Admin1234!
+              username: "${KESTRA_USER}"
+              password: "${KESTRA_PASS}"
           # Бухгалтерия Кестры. Твои Flow (YAML-файлы), история запусков 
           # кто, когда и c каким результатом запускал пайплайн и логи
           repository:
@@ -110,6 +110,12 @@ services:
             # Почему Postgres: В гигантских системах тут используют Kafka или RabbitMQ,
             # но для локальной работы Postgres отлично справляется с ролью «доски объявлений».
             type: postgres
+          kestra:
+          ai:
+            type: "gemini"
+            gemini:
+              api-key: "${GEMINI_API_KEY}"
+              model-name: gemini-2.5-flash
           tasks:
             # Верстак. Когда Кестра запускает задачу (например, твой скрипт на Python),
             # ей нужно где-то хранить временные файлы (исходники скрипта, результаты его работы и т.д.)
