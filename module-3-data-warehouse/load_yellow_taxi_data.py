@@ -5,12 +5,18 @@ Load Yellow Taxi Parquet files (Jan-Jun 2024) to GCS.
 
 import os
 import subprocess
+import sys
 from google.cloud import storage
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
 
 # Configuration
-BUCKET_NAME = "de-zoomcamp-2026-485615-yellow-taxi-2024"
-PROJECT_ID = "de-zoomcamp-2026-485615"
-BASE_URL = "https://d37ci6vzurychx.cloudfront.net/trip-data"
+BUCKET_NAME = os.getenv("BUCKET_NAME")
+PROJECT_ID = os.getenv("PROJECT_ID")
+BASE_URL = os.getenv("BASE_URL")
 
 MONTHS = ["01", "02", "03", "04", "05", "06"]
 YEAR = "2024"
@@ -49,7 +55,12 @@ def create_bucket_if_not_exists(bucket_name: str, location: str = "US"):
 
 
 def main():
-    # Create bucket
+    # Validate env vars and create bucket
+    if not BUCKET_NAME or not PROJECT_ID or not BASE_URL:
+        print("Error: BUCKET_NAME, PROJECT_ID and BASE_URL must be set in environment.")
+        print("See .env.example in this directory for sample values.")
+        sys.exit(1)
+
     create_bucket_if_not_exists(BUCKET_NAME)
     
     # Download and upload each month

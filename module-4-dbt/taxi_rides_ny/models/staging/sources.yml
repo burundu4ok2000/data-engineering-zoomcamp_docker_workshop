@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: raw_data
+    description: "Raw data from the taxi rides in New York"
+    database: "{{ env_var('PROJECT_ID') }}"
+    schema: "{{ env_var('DATASET') }}"
+    tables:
+      - name: green_tripdata
+      - name: yellow_tripdata
