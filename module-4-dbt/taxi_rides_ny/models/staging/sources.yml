@@ -1,15 +1,17 @@
+version: 2
+
 sources:
   - name: raw
     description: Raw taxi trip data from NYC TLC
     database: |
       {%- if target.type == 'bigquery' -%}
-        {{ env_var('GCP_PROJECT_ID', 'de-zoomcamp-2026-485615') }}
+        {{ env_var('GCP_PROJECT_ID', '') }}
       {%- else -%}
         taxi_rides_ny
       {%- endif -%}
     schema: |
       {%- if target.type == 'bigquery' -%}
-        zoomcamp
+        nytaxi
       {%- else -%}
         prod
       {%- endif -%}
@@ -18,47 +20,253 @@ sources:
       error_after: {count: 48, period: hour}
     tables:
       - name: green_tripdata
-        description: Raw green taxi trip records
+        description: >
+          Trip records from NYC Green Taxis.
+          
+          IMPORTANT: This raw source contains 12.45% of "Dispatch" records (VendorID is NULL) originating 
+          from HVFHV bases. These records lack meter data (Payment Type, Rate Code, Passenger Count) 
+          and are EXCLUDED from the staging models to maintain data integrity and schema compliance.
+
         loaded_at_field: lpep_pickup_datetime
         columns:
+          - name: unique_row_id
+            description: "Primary key. A unique hash generated for each record to ensure idempotency and prevent duplicates during ingestion."
+
+          - name: filename
+            description: "Lineage field. The name of the source data file used to trace the record back to its origin."
+            
           - name: vendorid
-            description: "Taxi technology provider (1 = Creative Mobile Technologies, 2 = VeriFone Inc.) - Note: Raw data may contain nulls, filtered in staging"
+            description: |
+              Taxi technology provider (1 = Creative Mobile Technologies, 2 = VeriFone Inc.)
+              
+              1. VeriFone Inc. (5 769 980 rows) 73.46% 
+              2. Creative Mobile Technologies, LLC (1 106 393 rows) 14.09%
+              NULL (978 246 rows) 12.45% - IMPORTANT: EXCLUDED
+
           - name: lpep_pickup_datetime
-            description: Date and time when the meter was engaged
+            description: |
+              Date and time when the meter was engaged.
+              
+              Note:
+              LPEP = Livery Passenger Enhancement Program (green taxis).
+              Historically, these were just private drivers ("gypsy cabs" or local car services).
+              They were retrofitted with terminals, but the rollout was chaotic, 
+              and the hardware is often outdated or buggy.
+
           - name: lpep_dropoff_datetime
             description: Date and time when the meter was disengaged
+
           - name: passenger_count
-            description: Number of passengers in the vehicle
+            description: |
+              Number of passengers in the vehicle.
+              
+              1 (5 929 172 rows) 75.49%
+              NULL. Missing data (978 246 rows) 12.45% - IMPORTANT: EXCLUDED
+              2 (499 442 rows) 6.36%
+              3 (93 071 rows) 1.18%
+              4 (34 491 rows) 0.44%
+              5 (195 558 rows) 2.49%
+              6 (109 245 rows) 1.39% - Legal Max for Minivans
+              0 (15 034 rows) 0.19% - Likely driver error or cargo delivery. Left as is to preserve data integrity.
+              > 6 (360 rows) < 0.01% - Impossible capacity for standard taxi vehicles. Likely technical glitch or fat-finger error.
+
           - name: trip_distance
-            description: Trip distance in miles
-          - name: pulocationid
-            description: TLC Taxi Zone where the meter was engaged
-          - name: dolocationid
-            description: TLC Taxi Zone where the meter was disengaged
+            description: |
+              Trip distance in miles.
+              
+              < 0 (19 487 rows) 0.25% - Technical error. High avg fare ($33) suggests reversal or adjustment records.
+              0 (203 448 rows) 2.59% - Negotiated fares (Rate 5) or waiting time. High avg fare ($19) confirms active payment.
+              0.01-1 (1 571 801 rows) 20.01% - Short local trips.
+              1-10 (5 498 232 rows) 70.00% - Standard trip distance.
+              10-50 (560 884 rows) 7.14% - Long trips (inter-borough or airport runs).
+              > 50 (767 rows) 0.01% - Outliers. Low avg fare for >100 miles confirms GPS teleportation or hardware glitch.
+
+          - name: PULocationID
+            description: |
+              TLC Taxi Zone in which the taximeter was engaged.
+              
+              Top Green Taxi Zones (Strong Northern Manhattan/Queens bias):
+              - Zone 74 East Harlem North (616,836 rows) 7.85%
+              - Zone 75 East Harlem South (505,462 rows) 6.44%
+              - Zone 41 Central Harlem (441,579 rows) 5.62%
+              - Zone 82 Elmhurst (319,555 rows) 4.07%
+              
+              Special/Error Codes:
+              - 264 Unknown / 265 N/A (20,138 rows combined) 0.26% - Negligible impact on geospatial analysis.
+              - 0 (Zero) - 0 rows. Clean data.
+
+          - name: DOLocationID
+            description: |
+              TLC Taxi Zone in which the taximeter was disengaged.
+              
+              Top Drop-off Zones (Mirroring Pickup Zones - Intra-borough travel pattern):
+              - Zone 74 East Harlem North (301,052 rows) 3.83%
+              - Zone 42 Central Harlem North (281,091 rows) 3.58%
+              - Zone 41 Central Harlem (246,082 rows) 3.13%
+              - Zone 75 East Harlem South (223,323 rows) 2.84%
+              
+              Special/Error Codes:
+              - 264 Unknown (33,190 rows) 0.42% - Higher than Pickup, likely due to GPS signal loss at destination.
+              - 265 N/A (20,324 rows) 0.26%.
+              - Total "Invalid" destination impact: < 0.7%.
+
           - name: ratecodeid
-            description: Rate code (1=Standard, 2=JFK, 3=Newark, 4=Nassau/Westchester, 5=Negotiated, 6=Group)
+            description: |
+              Rate code (1=Standard, 2=JFK, 3=Newark, 4=Nassau/Westchester, 5=Negotiated, 6=Group).
+              
+              1. Standard rate (6 564 731 rows) 83.58% -  Basically the most clean data)
+              Unknown / NULL (978 246 rows) 12.45% - IMPORTANT: EXCLUDED
+              5. Negotiated fare (289 701 rows) 3.69% - (Common in Green Taxis)
+              2. JFK (13 446 rows) 0.17%
+              4. Nassau or Westchester (5 153 rows) 0.07%
+              3. Newark (3 212 rows) 0.04%
+              6. Group ride (70 rows)  < 0.01%
+              99. ??? (Garbage/Test) (60 rows) < 0.01% - Rare (<0.01%) but contains critical outliers like $1M fares
+
           - name: store_and_fwd_flag
-            description: Trip record held in vehicle memory (Y/N)
+            description: |
+              Trip record held in vehicle memory (Y/N).
+              
+              N (6 856 949 rows) 87.3% - Real-time data transfer via 4G/LTE (Standard behavior)
+              NULL (978 246 rows) 12.45% - IMPORTANT: EXCLUDED
+              Y (19 424 rows) 0.25% - Store and forward (Trip data stored in memory due to bad connection)
+
           - name: payment_type
-            description: Payment method (1=Credit card, 2=Cash, 3=No charge, 4=Dispute, 5=Unknown, 6=Voided)
+            description: |
+              A numeric code signifying how the passenger paid for the trip. 
+              
+              Note: Unlike the standard DE Zoomcamp approach, this column is strictly typed and documented 
+              to enable accurate financial auditing and shadow-trip identification.
+              
+              Strategic Value:
+              - Financial Audit: tip_amount is only reliable for Credit Card (payment_type = 1).
+              - Data Cleaning: Identification of 12.45% "shadow" Dispatch trips (payment_type IS NULL).
+              - Business Logic: Required for margin analysis (Acquiring fees vs. Cash).
+
+              Distribution:
+              1 = Credit Card (3,896,388 rows) 49.61% - The only type with recorded tips (Avg Tip $1.92).
+              2 = Cash (2,927,573 rows) 37.27% - Tips are NOT recorded in the system, driving down aggregate stats.
+              NULL (978,246 rows) 12.45% - Dispatch/App-based trips. Payment handled via app. IMPORTANT: EXCLUDED.
+              3 = No Charge (37,355 rows) 0.48% - Free rides or company/mechanic use.
+              4 = Dispute (14,805 rows) 0.19% - Passenger refused to pay or transaction was voided.
+              5 = Unknown (252 rows) <0.01% - Hardware glitches or legacy system errors.
+
           - name: fare_amount
-            description: Time and distance fare
+            description: |
+              Time and distance fare.
+              
+              < 0$ (24 226 rows) 0.31% - Technical errors or reversals. Low avg distance (0.37 miles) confirms adjustment nature.
+              0$ (18 247 rows) 0.23% - Glitch or promo. High avg distance (3.3 miles) suggests trips occurred but fare was not captured.
+              0.01$ - 2.49 (2 385 rows) 0.03% - Below official TLC minimum of $2.50. 
+              2.5$ - 100 (7 805 689 rows) 99.38% - Standard fare range.
+              100$ - 500 (3 969 rows) 0.05% - Long-distance or specialized trips.
+              > 500$ (103 rows) < 0.01% - Outliers. Low avg distance (9.3 miles) confirms these are hardware glitches or fat-finger errors.
+
           - name: extra
-            description: Miscellaneous extras and surcharges
+            description: |
+              Miscellaneous extras and surcharges.
+              
+              0$ (4 156 885 rows) 52.92% - Baseline. No surcharges applied.
+              0.5$ (1 677 368 rows) 21.36% - Standard Night Surcharge (20:00-06:00).
+              1.0$ (1 290 047 rows) 16.42% - Standard Rush Hour Surcharge (16:00-20:00 weekdays).
+              2.75$ (620 208 rows) 7.90% - Congestion Surcharge. Often lumped into "extra" instead of its own column.
+              3.25$ / 3.75$ (64 036 rows) ~0.82% - Combined surcharges (Congestion $2.75 + Night $0.50 or Rush Hour $1.00).
+              5.5$ / 8.25$ (32 134 rows) ~0.41% - High-value surcharges. Likely multiple congestion fees or specialized zone surcharges.
+              < 0$ (10 636 rows) 0.14% - Reversals. Negative avg fare confirms these are adjustment records for standard surcharges.
+              Outliers (0.8$, 11.0$, 14.5$, etc.) < 0.01% - Technical noise. Unique values with 1-2 rows, likely hardware glitches.
+
           - name: mta_tax
-            description: MTA tax
+            description: |
+              MTA (Metropolitan Transportation Authority) tax.
+              
+              0.5$ (7 101 627 rows) 90.41% - Standard NYC MTA Tax.
+              0$ (730 584 rows) 9.30% - Tax not applied. Higher avg fare ($28.49) suggests long-distance trips ending outside the MTA jurisdiction or specialized service rates.
+              -0.5$ (22 329 rows) 0.28% - Reversals/Adjustments. Negative avg total confirms these are correction records.
+              Outliers (3.55$, 17.33$, 4.41$, etc.) < 0.01% - Hardware glitches or data corruption. Extremely rare unique values (often 1 row) with inconsistent total amounts.
+
           - name: tip_amount
-            description: Tip amount (credit card only)
+            description: |
+              Tip amount must be for credit card only.
+              
+              0 (4 882 707 rows) 62.16% - Recorded primarily for Cash payments (Type 2). Does not reflect actual tipping behavior for cash transactions.
+              Round Numbers (1.0, 2.0, 5.0) ~5.2% - Direct user input via preset "Quick Tip" buttons on the terminal.
+              Non-round values (e.g., 1.46, 1.56) ~28% - Auto-calculated percentages (typically 20%, 25%, or 30%) applied to the fare/total.
+              2.75 (286,709 rows) 3.65% - Data quality anomaly. Matches the NYS Congestion Surcharge amount; likely a systemic mapping error in the source system where tax was recorded as a tip.
+              0.01 (8,768 rows) 0.11% - Technical noise or micro-tips. Likely rounding artifacts or symbolic payments with negligible impact on totals.
+              
+              99.99% of non-zero tips are associated with Credit Card payments (Type 1).
+              Only 100 rows  recorded tips for Cash (Type 2), confirming that cash gratuities are not captured in this dataset.
+
           - name: tolls_amount
-            description: Total tolls paid
+            description: |
+              Total tolls paid. Matches MTA 2019 rate hike structure.
+              
+              0$ (7,479,266 rows) 95.22% - Standard routes without crossings.
+              5.76$ / 6.12$ (315,914 rows) 4.02% - MTA Major Crossings (Verrazzano, RFK). Split confirms dataset spans March 2019 rate hike ($5.76 -> $6.12).
+              2.29$ / 2.80$ (27,145 rows) 0.35% - MTA Minor Crossings (Marine Pkwy, Cross Bay).
+              11.52$ / 12.24$ (10,721 rows) 0.14% - Valid 2-bridge trips (Double major rate).
+              2.16$ / 2.64$ (7,415 rows) 0.09% - Potential Fraud/Error. Matches Motorcycle rates, invalid for Taxi/Limo class.
+              10.50$ / 12.50$ (3,583 rows) 0.05% - Port Authority Crossings to NJ (Lincoln/Holland Tunnels).
+              18.36$ (698 rows) < 0.01% - 3-bridge trips. Validated by extreme avg distance (109 miles).
+              2.75$ (481 rows) < 0.01% - Data Quality Error. Congestion Surcharge misplaced in tolls column.
+
           - name: improvement_surcharge
-            description: Improvement surcharge
+            description: |
+              Taxi Improvement Fund surcharge (Fixed mandated rate of $0.30).
+              
+              0.30$ (7,213,621 rows) 91.84% - Standard TIF fee for street-hail trips. Matches official TLC regulations.
+              0$ (618,834 rows) 7.88% - Surcharge not applied. High avg total ($30.53) indicates Dispatch/Pre-arranged trips or Negotiated fares where the fee is waived or bundled.
+              -0.30$ (22,152 rows) 0.28% - Reversals/Adjustments.
+              Outliers (0.43$, 0.46$, etc.) < 0.01% - Technical artifacts. No legal basis for these specific values.
+
           - name: total_amount
-            description: Total amount charged
+            description: |
+              Total amount charged to passengers (Fare + Extras + Taxes + Tips + Tolls).
+              
+              Ranges & Anomalies:
+              - < 0$ (24,193 rows) 0.31% - Financial reversals/adjustments. 
+              - 0$ (17,402 rows) 0.22% - "Free Rides". Avg distance 2.96 miles. Likely disputed trips or bad debt cleared as Cash $0.00.
+              - < 3.30$ (2,559 rows) 0.03% - Below Legal Minimum ($2.50 Base + $0.80 Taxes). Technical glitches.
+              - 3.30$ - 100$ (7.8M rows) 99.34% - Standard operating range.
+              - > 500$ (111 rows) < 0.01% - Extreme outliers. Max value $4,012.30 (9-mile trip) indicates hardware error.
+              
+              Pattern Recognition (The "Zoo" Analysis):
+              1. The "Cash Signature" (Totals ending in .30 or .80):
+                 - 7.80$ (2.6176%), 8.30$ (2.5595%), 7.30$ (2.5417%), 6.80$ (2.5389%).
+                 - Logic: Base Fare ($3.30) + Meter increments ($0.50 * N) = Total ends in .30 or .80.
+                 - Insight: Represents the most frequent Cash trips (Type 2) where no tip is recorded.
+                 
+              2. The "20% Standard" (Totals ending in .X6):
+                 - 8.76$ (0.6782%), 9.36$ (0.6689%), 8.16$ (0.6511%).
+                 - Logic: "Cash Signature" amount * 1.20 (20% Tip). 
+                 - Example: 7.30$ (Standard Cash) + 1.46$ (20% Tip) = 8.76$.
+                 - Insight: Confirms that the primary tip preset on NYC terminals is exactly 20%.
+
           - name: trip_type
-            description: Trip type (1=Street-hail, 2=Dispatch)
+            description: |
+              A code indicating whether the trip was a street-hail (1) or a dispatch (2).
+              
+              Strategic Decision: This model prioritizes Street-hail operations for core analytics, as Dispatch data is often incomplete or handled via external apps.
+
+              Distribution & Logic:
+              1 = Street-hail (6,592,751 rows) 83.93% - Dominant mode. Avg distance ~3 miles. Standard metered fares (RateCode 1).
+              2 = Dispatch (283,258 rows) 3.61% - Pre-arranged trips. Avg distance ~6 miles. High usage of Negotiated Fares (RateCode 5).
+              
+              NULL Analysis (978,610 rows | 12.46% of total):
+              - Systemic Missing Data (978,246 rows | 99.96% of NULLs): 
+                App-based/Shadow records (Uber/Lyft) lacking VendorID. 
+                Extreme avg distance (32.5 miles). EXCLUDED in staging via VendorID filter.
+              - Technical Hardware Glitches (364 rows | 0.04% of NULLs): 
+                Isolated cases where VendorID is present but trip_type was not recorded. 
+                Avg distance ~2.6 miles. RETAINED and handled via COALESCE(trip_type, 0).
+
           - name: ehail_fee
-            description: E-hail fee
+            description: |
+              Legacy/Placeholder field. 
+              
+              NULL (99.99%) - Systematically unpopulated in public TLC records.
+              1.95$ (3 rows) / 0$ (351 rows) - Negligible volume (<0.01%). 
+              Conclusion: Column provides no analytical value and is typically excluded from downstream models.
 
       - name: yellow_tripdata
         description: Raw yellow taxi trip records

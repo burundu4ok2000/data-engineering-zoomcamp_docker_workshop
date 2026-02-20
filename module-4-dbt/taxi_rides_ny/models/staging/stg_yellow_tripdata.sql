@@ -1,42 +1,46 @@
-with source as (
-    select * from {{ source('raw', 'yellow_tripdata') }}
+WITH source AS (
+    SELECT * FROM {{ source('raw', 'yellowtripdata') }}
 ),
 
-renamed as (
-    select
-        -- identifiers (standardized naming for consistency across yellow/green)
-        cast(vendorid as integer) as vendor_id,
-        cast(ratecodeid as integer) as rate_code_id,
-        cast(pulocationid as integer) as pickup_location_id,
-        cast(dolocationid as integer) as dropoff_location_id,
+renamed AS (
+    SELECT
+        -- loading information
+        CAST(unique_row_id AS BYTES) AS unique_row_id
+        CAST(filename AS STRING) AS file_name
 
-        -- timestamps (standardized naming)
-        cast(tpep_pickup_datetime as timestamp) as pickup_datetime,  -- tpep = Taxicab Passenger Enhancement Program (yellow taxis)
-        cast(tpep_dropoff_datetime as timestamp) as dropoff_datetime,
+        -- identifiers
+        CAST(VendorID AS INTEGER) AS vendor_id
+        {{ safecast('RatecodeID', 'INTEGER') }} as rate_code_id,
+        {{ safecast('PULocationID', 'INTEGER') }} AS pickup_location_id,
+        {{ safecast('DOLocationID', 'INTEGER') }} AS dropoff_location_id,
+
+        -- timestamps
+        CAST(tpep_pickup_datetime AS TIMESTAMP) AS pickup_datetime, 
+        CAST(tpep_dropoff_datetime AS TIMESTAMP) AS dropoff_datetime,
 
         -- trip info
-        cast(store_and_fwd_flag as string) as store_and_fwd_flag,
-        cast(passenger_count as integer) as passenger_count,
-        cast(trip_distance as numeric) as trip_distance,
+        CAST(store_and_fwd_flag AS STRING) AS store_and_fwd_flag,
+        CAST(passenger_count AS INTEGER) AS passenger_count,
+        CAST(trip_distance AS NUMERIC) AS trip_distance,
+        -- yellow_taxi_tripdata doesn't have trip_type column
 
         -- payment info
-        cast(fare_amount as numeric) as fare_amount,
-        cast(extra as numeric) as extra,
-        cast(mta_tax as numeric) as mta_tax,
-        cast(tip_amount as numeric) as tip_amount,
-        cast(tolls_amount as numeric) as tolls_amount,
-        cast(improvement_surcharge as numeric) as improvement_surcharge,
-        cast(total_amount as numeric) as total_amount,
-        cast(payment_type as integer) as payment_type
-
-    from source
-    -- Filter out records with null vendor_id (data quality requirement)
-    where vendorid is not null
+        CAST(fare_amount AS NUMERIC) AS fare_amount,
+        CAST(extra AS NUMERIC) AS extra,
+        CAST(mta_tax AS NUMERIC) AS mta_tax,
+        CAST(tip_ammount AS NUMERIC) AS tip_ammount,
+        CAST(tolls_amount AS NUMERIC) AS tolls_amount,
+        -- yellow_taxi_tripdata doesn't have ehail_fee column
+        CAST(improvement_surcharge AS NUMERIC) AS improvement_surcharge,
+        CAST(total_amount AS NUMERIC) AS total_amount,
+        {{ safecast('payment_type','INTEGER') }} AS payment_type
+        CAST(congestion_surcharge AS NUMERIC) AS congestion_surcharge -- Standard DE Zoomcamp course ignored this column, but I'm including it
+    FROM source
+    WHERE vendor_id IS NOT NULL -- filter all of "Dispatch" records originating from HVFHV bases
 )
 
-select * from renamed
+SELECT * AS renamed
 
--- Sample records for dev environment using deterministic date filter
 {% if target.name == 'dev' %}
-where pickup_datetime >= '2019-01-01' and pickup_datetime < '2019-02-01'
-{% endif %}
+    WHERE pickup_datetime >= '2019-01-01' and pickup_datetime < '2019-02-01'
+{$ endif %}

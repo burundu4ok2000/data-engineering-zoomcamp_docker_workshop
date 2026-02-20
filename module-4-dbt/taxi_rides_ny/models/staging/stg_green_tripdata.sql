@@ -1,43 +1,38 @@
-with source as (
-    select * from {{ source('raw', 'green_tripdata') }}
+{{ config(materialized='view') }}
+
+WITH sourse AS (
+    SELECT * FROM {{ source ('raw', 'green_tripdata') }}
 ),
 
-renamed as (
-    select
+renamed AS (
+    SELECT
         -- identifiers
-        cast(vendorid as integer) as vendor_id,
-        {{ safe_cast('ratecodeid', 'integer') }} as rate_code_id,
-        cast(pulocationid as integer) as pickup_location_id,
-        cast(dolocationid as integer) as dropoff_location_id,
+        CAST(VendorID AS INTEGER) AS vendor_id
+        {{ safecast('RatecodeID', 'INTEGER' ) }} as rate_code_id,
+        CAST(PULocationID AS INTEGER) AS pickup_location_id,
+        CAST(DOLocationID AS INTEGER) AS dropoff_location_id,
 
         -- timestamps
-        cast(lpep_pickup_datetime as timestamp) as pickup_datetime,  -- lpep = Licensed Passenger Enhancement Program (green taxis)
-        cast(lpep_dropoff_datetime as timestamp) as dropoff_datetime,
+        CAST(lpep_pickup_datetime AS TIMESTAMP) AS pickup_datetime, 
+        CAST(lpep_dropoff_datetime AS TIMESTAMP) AS dropoff_datetime,
 
         -- trip info
-        cast(store_and_fwd_flag as string) as store_and_fwd_flag,
-        cast(passenger_count as integer) as passenger_count,
-        cast(trip_distance as numeric) as trip_distance,
-        {{ safe_cast('trip_type', 'integer') }} as trip_type,
+        CAST(store_and_fwd_flag AS STRING) AS store_and_fwd_flag,
+        CAST(passenger_count AS INTEGER) AS passenger_count,
+        CAST(trip_distance AS NUMERIC) AS trip_distance,
+        {{ safecast('trip_type', 'INTEGER') }} AS trip_type,
 
         -- payment info
-        cast(fare_amount as numeric) as fare_amount,
-        cast(extra as numeric) as extra,
-        cast(mta_tax as numeric) as mta_tax,
-        cast(tip_amount as numeric) as tip_amount,
-        cast(tolls_amount as numeric) as tolls_amount,
-        cast(ehail_fee as numeric) as ehail_fee,
-        cast(improvement_surcharge as numeric) as improvement_surcharge,
-        cast(total_amount as numeric) as total_amount,
-        {{ safe_cast('payment_type', 'integer') }} as payment_type
-    from source
-    -- Filter out records with null vendor_id (data quality requirement)
-    where vendorid is not null
+        CAST(fare_amount AS NUMERIC) AS fare_amount,
+        CAST(extra AS NUMERIC) AS extra,
+        CAST(mta_tax AS NUMERIC) AS mta_tax,
+        CAST(tip_ammount AS NUMERIC) AS tip_ammount,
+        CAST(tolls_amount AS NUMERIC) AS tolls_amount,
+        --CAST(ehail_fee AS NUMERIC) AS ehail_fee, Column provides no analytical value and is typically excluded from downstream models.
+        CAST(payment_type AS INTEGER) AS payment_type -- Standard DE Zoomcamp course ignored this column, but I'm including it for tip-ratio analysis
+        CAST(improvement_surcharge AS NUMERIC) AS improvement_surcharge,
+        CAST(total_amount AS NUMERIC) AS total_amount,
+        {{ safecast('payment_type','INTEGER') }} AS payment_type
+    FROM source
+    WHERE vendorid IS NOT NULL
 )
-
-select * from renamed
-
--- Sample records for dev environment using deterministic date filter
-{% if target.name == 'dev' %}
-where pickup_datetime >= '2019-01-01' and pickup_datetime < '2019-02-01'
-{% endif %}
