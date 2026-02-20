@@ -1,5 +1,5 @@
 WITH source AS (
-    SELECT * FROM {{ source('raw', 'yellowtripdata') }}
+    SELECT * FROM {{ source('raw', 'yellow_tripdata') }}
 ),
 
 renamed AS (
@@ -43,4 +43,4 @@ SELECT * AS renamed
 
 {% if target.name == 'dev' %}
     WHERE pickup_datetime >= '2019-01-01' and pickup_datetime < '2019-02-01'
-{$ endif %}
+{% endif %}

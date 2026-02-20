@@ -45,4 +45,4 @@ SELECT * FROM renamed
 
 {% if target.name == 'dev' %}
     WHERE pickup_datetime >= '2019-01-01' and pickup_datetime < '2019-02-01'
-{$ endif %}
+{% endif %}

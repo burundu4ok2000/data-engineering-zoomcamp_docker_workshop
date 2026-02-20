@@ -62,6 +62,7 @@ models:
         data_tests:
           - not_null
           - accepted_values:
+            arguments:
               values: [1, 2, 4]
               severity: warn
 
@@ -70,12 +71,14 @@ models:
         data_tests:
           - not_null
           - accepted_values:
+            arguments:
                 values: ['Green', 'Yellow']
 
       - name: rate_code_id
         description: Rate code at end of trip
         data_tests:
           - accepted_values:
+            arguments:
               values: [1, 2, 3, 4, 5, 6]
               severity: warn
 
@@ -122,6 +125,7 @@ models:
         description: "Numeric payment code (COALESCE to 0 if missing)."
         data_tests:
           - accepted_values:
+            arguments:
               values: [0, 1, 2, 3, 4, 5, 6]
 
       - name: payment_type_description
@@ -129,6 +133,7 @@ models:
         data_tests:
           - not_null
           - accepted_values:
+            arguments:
               values: ['Credit card', 'Cash', 'No charge', 'Dispute', 'Unknown', 'Voided']
 
       - name: congestion_surcharge

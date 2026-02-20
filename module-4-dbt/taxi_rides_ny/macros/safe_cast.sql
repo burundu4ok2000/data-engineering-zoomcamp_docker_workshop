@@ -30,12 +30,12 @@
     running.
 #}
 
-{% macro_safecast(column, datetype) %}
+{% macro safe_cast(column, data_type) %}
 
     {% if target.type == 'bigquery' %}
-        safecast({{ column }}, {{ datetype }})
+        safe_cast({{ column }} AS {{ data_type }})
     {% else %}
-        cast({{ column }}, {{ datetype }})
+        CAST({{ column }} AS {{ data_type }})
     {% endif %}
 
 {% endmacro %}

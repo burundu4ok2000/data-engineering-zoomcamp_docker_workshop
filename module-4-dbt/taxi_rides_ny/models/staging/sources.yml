@@ -15,9 +15,10 @@ sources:
       {%- else -%}
         prod
       {%- endif -%}
-    freshness:
-      warn_after: {count: 24, period: hour}
-      error_after: {count: 48, period: hour}
+    config:
+      freshness: 
+        warn_after: {count: 6, period: hour}
+        error_after: {count: 24, period: hour}
     tables:
       - name: green_tripdata
         description: |
@@ -27,7 +28,9 @@ sources:
           from HVFHV bases. These records lack meter data (Payment Type, Rate Code, Passenger Count) 
           and are EXCLUDED from the staging models to maintain data integrity and schema compliance.
 
-        loaded_at_field: lpep_pickup_datetime
+        config:
+          loaded_at_field: lpep_pickup_datetime
+
         columns:
           - name: unique_row_id
             description: "Primary key. A unique hash generated for each record to ensure idempotency and prevent duplicates during ingestion."
@@ -309,7 +312,8 @@ sources:
 
       - name: yellow_tripdata
         description: Raw yellow taxi trip records
-        loaded_at_field: tpep_pickup_datetime
+        config:
+          loaded_at_field: lpep_pickup_datetime
         columns:
           - name: vendorid
             description: |

@@ -12,7 +12,7 @@ WITH trips AS (
 vendors AS (
     SELECT DISTINCT
         vendor_id,
-        {{ get_vendor_data('vendor_id') AS vendor_name }}
+        {{ get_vendor_data('vendor_id') }} AS vendor_name 
     FROM trips
 )
 
