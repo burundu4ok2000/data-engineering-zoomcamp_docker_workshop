@@ -1,0 +1,135 @@
+models:
+  - name: int_trips_unioned
+    description: |
+      Unified dataset combining Green and Yellow taxi records. 
+      Schema is normalized across both sources. Yellow taxi records are enriched with a default trip_type (1 = Street-hail).
+    columns:
+      - name: vendor_id
+        description: Taxi technology provider ID
+      - name: rate_code_id
+        description: Rate code at end of trip (1=Standard, 2=JFK, 3=Newark, 4=Nassau/Westchester, 5=Negotiated, 6=Group)
+      - name: pickup_location_id
+        description: TLC Taxi Zone where trip started
+      - name: dropoff_location_id
+        description: TLC Taxi Zone where trip ended
+      - name: pickup_datetime
+        description: Timestamp when meter was engaged
+      - name: dropoff_datetime
+        description: Timestamp when meter was disengaged
+      - name: store_and_fwd_flag
+        description: Trip record stored in vehicle memory (Y/N)
+      - name: passenger_count
+        description: Number of passengers in the vehicle
+      - name: trip_distance
+        description: Trip distance in miles
+      - name: trip_type
+        description: Trip type (1=Street-hail, 2=Dispatch)
+      - name: fare_amount
+        description: Time and distance fare
+      - name: extra
+        description: Miscellaneous extras and surcharges
+      - name: mta_tax
+        description: MTA tax
+      - name: tip_amount
+        description: Tip amount (credit card only)
+      - name: tolls_amount
+        description: Total tolls paid
+      - name: improvement_surcharge
+        description: Improvement surcharge
+      - name: total_amount
+        description: Total amount charged to passenger
+      - name: payment_type
+        description: Payment method code
+      - name: service_type
+        description: Type of taxi service (Green or Yellow)
+      - name: congestion_surcharge
+        description: Congestion surcharge (applies to trips in Manhattan south of 96th Street)
+
+  - name: int_trips
+    description: |
+      The gold standard for trip data. This model is enriched with payment descriptions, 
+      deduplicated using a business-key partition (Vendor/Pickup/Location/Service), 
+      and assigned a unique surrogate key.
+    columns:
+      - name: trip_id
+        description: Primary Key. MD5 hash generated from vendor_id, pickup_datetime, pickup_location_id, and service_type
+        data_tests:
+          - unique
+          - not_null
+
+      - name: vendor_id
+        description: Taxi technology provider ID
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2, 4]
+              severity: warn
+
+      - name: service_type
+        description: Type of taxi service (Green or Yellow)
+        data_tests:
+          - not_null
+          - accepted_values:
+                values: ['Green', 'Yellow']
+
+      - name: rate_code_id
+        description: Rate code at end of trip
+        data_tests:
+          - accepted_values:
+              values: [1, 2, 3, 4, 5, 6]
+              severity: warn
+
+      - name: pickup_location_id
+        description: TLC Taxi Zone where trip started
+      - name: dropoff_location_id
+        description: TLC Taxi Zone where trip ended
+      - name: pickup_datetime
+        description: Timestamp when meter was engaged
+        data_tests:
+          - not_null
+
+      - name: dropoff_datetime
+        description: Timestamp when meter was disengaged
+        data_tests:
+          - not_null
+
+      - name: store_and_fwd_flag
+        description: Trip record stored in vehicle memory (Y/N)
+      - name: passenger_count
+        description: "Driver-reported passenger count. May contain zeros (cargo/errors)."
+      - name: trip_distance
+        description: "Distance in miles. Zero values indicate negotiated fares or waiting time."
+      - name: trip_type
+        description: Trip type (1=Street-hail, 2=Dispatch)
+      - name: fare_amount
+        description: Time and distance fare
+      - name: extra
+        description: Miscellaneous extras and surcharges
+      - name: mta_tax
+        description: MTA tax
+      - name: tip_amount
+        description: Tip amount (credit card only)
+      - name: tolls_amount
+        description: Total tolls paid
+      - name: improvement_surcharge
+        description: Improvement surcharge
+      - name: total_amount
+        description: "Final gross amount. Includes all taxes and surcharges but excludes cash tips."
+        data_tests:
+          - not_null
+
+      - name: payment_type
+        description: "Numeric payment code (COALESCE to 0 if missing)."
+        data_tests:
+          - accepted_values:
+              values: [0, 1, 2, 3, 4, 5, 6]
+
+      - name: payment_type_description
+        description: Human-readable mapping from the payment_type_lookup table
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: ['Credit card', 'Cash', 'No charge', 'Dispute', 'Unknown', 'Voided']
+
+      - name: congestion_surcharge
+        description: Congestion surcharge (applies to trips in Manhattan south of 96th Street)
