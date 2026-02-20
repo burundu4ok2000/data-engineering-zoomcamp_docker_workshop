@@ -1,0 +1,16 @@
+taxi_rides_ny: 
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: service-account
+
+      project: "{{ env_var('GCP_PROJECT_ID') }}"
+      dataset: "{{ env_var('DATASET') }}"
+      
+      keyfile: "~/.google/credentials/my-credentials.json" 
+      
+      threads: 4
+      timeout_seconds: 300
+      location: us-central1
+      priority: interactive 

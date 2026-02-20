@@ -52,6 +52,7 @@ cleaned_and_enriched AS (
 SELECT * FROM cleaned_and_enriched
 
 -- Deduplicate: if multiple trips match (same vendor, second, location, service), keep first
+-- WINDOW FUNCTION OVER() -
 qualify row_number() OVER(
     PARTITION BY vendor_id, pickup_datetime, pickup_location_id, service_type
     ORDER BY dropoff_datetime
