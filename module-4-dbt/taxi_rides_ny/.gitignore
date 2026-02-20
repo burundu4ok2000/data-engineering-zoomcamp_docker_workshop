@@ -1,5 +1,9 @@
 # https://github.com/dbt-labs/dbt-bigquery/blob/main/.gitignore - 
 
+# 
+.user.yml
+dbt_packages/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
