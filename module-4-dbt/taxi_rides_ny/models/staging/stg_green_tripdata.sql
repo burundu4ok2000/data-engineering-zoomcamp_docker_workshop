@@ -30,7 +30,7 @@ renamed AS (
         CAST(fare_amount AS NUMERIC) AS fare_amount,
         CAST(extra AS NUMERIC) AS extra,
         CAST(mta_tax AS NUMERIC) AS mta_tax,
-        CAST(tip_ammount AS NUMERIC) AS tip_ammount,
+        CAST(tip_amount AS NUMERIC) AS tip_amount,
         CAST(tolls_amount AS NUMERIC) AS tolls_amount,
         -- CAST(ehail_fee AS NUMERIC) AS ehail_fee, Column provides no analytical value and is typically excluded from downstream models.
         CAST(improvement_surcharge AS NUMERIC) AS improvement_surcharge,

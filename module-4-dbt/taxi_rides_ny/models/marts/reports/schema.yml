@@ -1,1 +1,77 @@
-# TODO
+models:
+  - name: fct_monthly_zone_revenue
+    description: Monthly revenue aggregation by pickup zone and service type for business reporting
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columnts:
+             - pickup_zone
+             - revenue_month
+             - service_type
+    columns:
+
+
+      # Grouping dimensions
+      - name: pickup_zone
+        description: Pickup zone where revenue was generated
+        data_tests:
+          - not_null
+
+      - name: revenue_month
+        description: Month for revenue aggregation
+        data_tests: 
+          - not_null
+
+      - name: service_type
+        description: Service type (Green or Yellow)
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Green', 'Yellow']
+
+
+      # Revenue breakdown
+      - name: revenue_monthly_fare_amount
+        description: "Total monthly base fare for all trips. Calculated as the sum of metered fares before surcharges."
+
+      - name: revenue_monthly_extra
+        description: "Total monthly miscellaneous extras and surcharges, such as the $0.50 and $1.00 rush hour and overnight charges."
+
+      - name: revenue_monthly_mta_tax
+        description: "Total monthly MTA tax ($0.50) automatically triggered based on the metered rate in use."
+
+      - name: revenue_monthly_tip_amount
+        description: "Total monthly tips collected. Note: This field is automatically populated for credit card payments; cash tips are typically not included."
+
+      - name: revenue_monthly_tolls_amount
+        description: "Total monthly amount paid for bridge and tunnel tolls during the trips."
+
+      - name: revenue_monthly_congestion_surcharge
+        description: "Total monthly congestion surcharge for trips starting, ending, or passing through the Manhattan congestion zone."
+
+      - name: revenue_monthly_improvement_surcharge
+        description: "Total monthly improvement surcharge ($0.30) assessed on trips to fund the taxi accessibility program."
+
+      - name: revenue_monthly_total_amount
+        description: Monthly sum of total fares
+        data_tests:
+          - not_null
+
+
+      # Additional metrics for operational analysis
+      - name: total_monthly_trips
+        description: Count of trips in the month
+        data_tests:
+          - not_null
+      
+      - name: avg_monthly_passenger_count
+        description: Average number of passengers per trip
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 6 
+
+      - name: avg_monthly_trip_distance
+        description: Average trip distance in miles

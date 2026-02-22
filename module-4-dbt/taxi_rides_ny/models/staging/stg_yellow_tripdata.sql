@@ -28,7 +28,7 @@ renamed AS (
         CAST(fare_amount AS NUMERIC) AS fare_amount,
         CAST(extra AS NUMERIC) AS extra,
         CAST(mta_tax AS NUMERIC) AS mta_tax,
-        CAST(tip_ammount AS NUMERIC) AS tip_ammount,
+        CAST(tip_amount AS NUMERIC) AS tip_amount,
         CAST(tolls_amount AS NUMERIC) AS tolls_amount,
         -- yellow_taxi_tripdata doesn't have ehail_fee column
         CAST(improvement_surcharge AS NUMERIC) AS improvement_surcharge,
