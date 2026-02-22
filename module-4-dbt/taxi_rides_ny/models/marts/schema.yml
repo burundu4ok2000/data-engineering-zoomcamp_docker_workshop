@@ -53,10 +53,10 @@ models:
         description: Type of taxi service (Green or Yellow)
         data_type: string
         data_tests:
+          - not_null
           - accepted_values:
               arguments:
-                values:: ['Green', 'Yellow']
-          - not_null
+                values: ['Green', 'Yellow']
 
       - name: rate_code_id
         description: Final rate code

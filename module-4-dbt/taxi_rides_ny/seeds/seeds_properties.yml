@@ -16,5 +16,6 @@ seeds:
         data_tests:
           - unique
           - not_null
+          
       - name: description
         description: Human-readable description of payment method

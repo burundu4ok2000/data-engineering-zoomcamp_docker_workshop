@@ -11,7 +11,7 @@
 
 WITH green_tripdata AS (
     SELECT
-        -- exclude loading information (unique_row_id, filename)
+        -- exclude loading information (unique_row_id, file_name)
         vendor_id,
         rate_code_id,
         pickup_location_id,
@@ -37,7 +37,7 @@ WITH green_tripdata AS (
 
 yellow_tripdata AS (
     SELECT
-        -- exclude loading information (unique_row_id, filename)
+        -- exclude loading information (unique_row_id, file_name)
         vendor_id,
         rate_code_id,
         pickup_location_id,

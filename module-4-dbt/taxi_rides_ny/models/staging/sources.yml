@@ -11,7 +11,7 @@ sources:
       {%- endif -%}
     schema: |
       {%- if target.type == 'bigquery' -%}
-        nytaxi
+        zoomcamp
       {%- else -%}
         prod
       {%- endif -%}
@@ -35,7 +35,7 @@ sources:
           - name: unique_row_id
             description: "Primary key. A unique hash generated for each record to ensure idempotency and prevent duplicates during ingestion."
 
-          - name: filename
+          - name: file_name
             description: "Lineage field. The name of the source data file used to trace the record back to its origin."
 
           - name: vendorid
