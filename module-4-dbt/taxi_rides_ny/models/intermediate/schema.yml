@@ -64,6 +64,8 @@ models:
           - accepted_values:
               arguments:
                 values: [1, 2, 4]
+                quote: false
+              config:
                 severity: warn
 
       - name: service_type
@@ -80,6 +82,8 @@ models:
           - accepted_values:
               arguments:
                 values: [1, 2, 3, 4, 5, 6]
+                quote: false
+              config:
                 severity: warn
 
       - name: pickup_location_id
@@ -127,6 +131,7 @@ models:
           - accepted_values:
               arguments:
                 values: [0, 1, 2, 3, 4, 5, 6]
+                quote: false
 
       - name: payment_type_description
         description: Human-readable mapping from the payment_type_lookup table

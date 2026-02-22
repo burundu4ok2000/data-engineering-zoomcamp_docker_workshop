@@ -7,7 +7,7 @@
 
 WITH trips AS (
     SELECT * FROM {{ ref('fct_trips') }}
-)
+),
 
 vendors AS (
     SELECT DISTINCT

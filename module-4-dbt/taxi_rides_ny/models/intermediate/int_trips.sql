@@ -44,7 +44,7 @@ cleaned_and_enriched AS (
         COALESCE(u.payment_type, 0) AS payment_type,
         COALESCE(pt.description, 'Unknown') AS payment_type_description
 
-    FROM unioned u
+    FROM unioned_trips u
     LEFT JOIN payment_types pt
         ON COALESCE(u.payment_type, 0) = pt.payment_type
 )
@@ -53,7 +53,7 @@ SELECT * FROM cleaned_and_enriched
 
 -- Deduplicate: if multiple trips match (same vendor, second, location, service), keep first
 -- WINDOW FUNCTION OVER() -
-qualify row_number() OVER(
+QUALIFY row_number() OVER(
     PARTITION BY vendor_id, pickup_datetime, pickup_location_id, service_type
     ORDER BY dropoff_datetime
 ) = 1

@@ -1,5 +1,5 @@
 taxi_rides_ny: 
-  target: dev
+  target: dev 
   outputs:
     dev:
       type: bigquery
@@ -14,3 +14,17 @@ taxi_rides_ny:
       timeout_seconds: 300
       location: us-central1
       priority: interactive 
+
+    prod:
+      type: bigquery
+      method: service-account
+
+      project: "{{ env_var('GCP_PROJECT_ID') }}"
+      dataset: "{{ env_var('DATASET_PRODUCTION') }}"
+      
+      keyfile: "{{ env_var('GCP_KEY_PATH') }}" 
+      
+      threads: 8
+      timeout_seconds: 300
+      location: us-central1
+      priority: interactive
