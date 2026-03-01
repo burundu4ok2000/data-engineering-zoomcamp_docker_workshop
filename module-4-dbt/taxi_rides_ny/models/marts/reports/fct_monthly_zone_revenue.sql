@@ -3,11 +3,10 @@
     This aggregation is optimized for business reporting and dashboards
     Enables analysis of revenue trends across different zones and taxi types
 
-    TODOs:
+    Qs:
     1. Where are the filtration of the bad data? (trip_distance, passenger_count) - at staging
-    2. Do I need to filter bad data in Payment rows? (I think no)
-    3. Do I need to specify data_tests in schema.yml? For example passenger_count < 6 && passenger_count > 0
-    4. Add descriptions to schema.yml file. 
+    2. Where I need to filter bad data in Payment rows? (I think no) - at staging
+    3. Where I need to specify data_tests in schema.yml? For example passenger_count < 6 && passenger_count > 0 - at staging
 #}
 
 SELECT
