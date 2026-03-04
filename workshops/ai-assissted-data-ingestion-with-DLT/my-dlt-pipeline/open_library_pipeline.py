@@ -5,28 +5,38 @@ from dlt.sources.rest_api import rest_api_resources
 from dlt.sources.rest_api.typing import RESTAPIConfig
 
 
-# if no argument is provided, `access_token` is read from `.dlt/secrets.toml`
 @dlt.source
-def open_library_rest_api_source(access_token: str = dlt.secrets.value):
+def open_library_rest_api_source():
     """Define dlt resources from REST API endpoints."""
     config: RESTAPIConfig = {
         "client": {
-            # TODO set base URL for the REST API
-            "base_url": "https://example.com/v1/",
-            # TODO configure the right authentication method or remove
-            "auth": {"type": "bearer", "token": access_token},
+            "base_url": "https://openlibrary.org/",
         },
         "resources": [
-            # TODO define resources per endpoint
+            {
+                "name": "search",
+                "endpoint": {
+                    "path": "search.json",
+                    "params": {
+                        "q": "Detectives",
+                    },
+                    "paginator": {
+                        "type": "offset",
+                        "limit": 100,
+                        "maximum_offset": 1500,
+                        "total_path": "numFound"
+                    },
+                    "data_selector": "docs"
+                }
+            }
         ],
-        # set `resource_defaults` to apply configuration to all endpoints
     }
 
     yield from rest_api_resources(config)
 
 
 pipeline = dlt.pipeline(
-    pipeline_name='open_library_pipeline',
+    pipeline_name='DE_Z_open_library_pipeline',
     destination='duckdb',
     # `refresh="drop_sources"` ensures the data and the state is cleaned
     # on each `pipeline.run()`; remove the argument once you have a
