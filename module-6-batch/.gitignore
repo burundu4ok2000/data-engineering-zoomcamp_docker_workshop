@@ -1,0 +1,12 @@
+data/
+
+zones/
+
+taxi_zone_lookup.csv
+
+# Spark data and metadata
+*.parquet
+*.crc
+_SUCCESS
+pq/
+data/
