@@ -1,0 +1,81 @@
+import os
+from pyflink.datastream import StreamExecutionEnvironment
+from pyflink.table import EnvironmentSettings, StreamTableEnvironment
+from dotenv import load_dotenv
+
+load_dotenv('/opt/flink/usrlib/.env')
+PG_USER = os.getenv('POSTGRES_USER', 'postgres')
+PG_PASS = os.getenv('POSTGRES_PASSWORD', 'postgres')
+
+
+def create_sink(t_env):
+    table_name = 'trip_counts_by_location'
+    sink_ddl = f"""
+        CREATE TABLE {table_name} (
+            window_start TIMESTAMP(3),
+            PULocationID INT,
+            num_trips BIGINT
+        ) WITH (
+            'connector' = 'jdbc',
+            'url' = 'jdbc:postgresql://postgres:5432/postgres',
+            'table-name' = '{table_name}',
+            'username' = '{PG_USER}',
+            'password' = '{PG_PASS}',
+            'driver' = 'org.postgresql.Driver'
+        );
+        """
+    t_env.execute_sql(sink_ddl)
+    return table_name
+
+def create_source(t_env):
+    table_name = "green_trips"
+    source_ddl = f"""
+        CREATE TABLE {table_name} (
+            PULocationID INT,
+            lpep_pickup_datetime VARCHAR,
+            event_timestamp AS TO_TIMESTAMP(lpep_pickup_datetime, 'yyyy-MM-dd HH:mm:ss'),
+            WATERMARK FOR event_timestamp AS event_timestamp - INTERVAL '5' SECOND
+        ) WITH (
+            'connector' = 'kafka',
+            'properties.bootstrap.servers' = 'redpanda:29092',
+            'topic' = 'green-trips',
+            'scan.startup.mode' = 'earliest-offset',
+            'properties.auto.offset.reset' = 'earliest',
+            'format' = 'json'
+        );
+        """
+    t_env.execute_sql(source_ddl)
+    return table_name
+
+def log_aggregation():
+    # Set up the execution environment
+    env = StreamExecutionEnvironment.get_execution_environment()
+    env.enable_checkpointing(10 * 1000)
+    # The green-trips topic has 1 partition, so set parallelism to 1
+    env.set_parallelism(1)
+
+    # Set up the table environment
+    settings = EnvironmentSettings.new_instance().in_streaming_mode().build()
+    t_env = StreamTableEnvironment.create(env, environment_settings=settings)
+
+    try:
+        source_table = create_source(t_env)
+        aggregated_table = create_sink(t_env)
+
+        t_env.execute_sql(f"""
+        INSERT INTO {aggregated_table}
+        SELECT
+            window_start,
+            PULocationID,
+            COUNT(*) AS num_trips
+        FROM TABLE(
+            TUMBLE(TABLE {source_table}, DESCRIPTOR(event_timestamp), INTERVAL '5' MINUTE)
+        )
+        GROUP BY window_start, window_end, PULocationID;
+        """).wait()
+
+    except Exception as e:
+        print("Writing records from Kafka to JDBC failed:", str(e))
+
+if __name__ == '__main__':
+    log_aggregation()
